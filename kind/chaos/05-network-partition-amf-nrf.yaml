@@ -1,0 +1,37 @@
+# Fault class: Network Partition (Silva PF22 – Network Fault)
+# Affected interface: SBI — AMF <-> SCP link
+# Open5GS uses indirect communication (Model D): all NF-to-NF calls go through SCP.
+# AMF never talks directly to NRF/AUSF/UDM — it always routes via SCP.
+# Partitioning AMF<->SCP cuts off all SBI calls from AMF: auth, UDM lookups,
+# service discovery — causing registration failures and cascading errors.
+# Expected propagation: AMF cannot complete UE registrations → SCP logs
+#                       connection errors → UEs get PAYLOAD_NOT_FORWARDED
+# Key signals: error log spike in AMF + SCP, pod_running_count stable (no crash),
+#              re-registration loop failures visible in Loki
+#
+# Apply:  kubectl apply -f 05-network-partition-amf-nrf.yaml
+# Remove: kubectl delete -f 05-network-partition-amf-nrf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-partition-amf-nrf
+  namespace: open5gs
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: amf
+      app.kubernetes.io/instance: open5gs
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - open5gs
+      labelSelectors:
+        app.kubernetes.io/name: scp
+        app.kubernetes.io/instance: open5gs
+  duration: "5m"

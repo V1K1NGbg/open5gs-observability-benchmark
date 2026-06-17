@@ -1,0 +1,33 @@
+# Fault class: CPU Stress (Silva PF31 – CPU Hog Fault)
+# Target: SCP — Service Communication Proxy, routes all indirect NF-to-NF SBI calls
+# Expected propagation:
+#   Infrastructure: SCP CPU throttling visible in container_cpu_cfs_throttled_seconds_total
+#   Orchestration:  HPA may scale SCP if configured; pod may be OOMKilled if CPU+mem spike
+#   Application:    All NF-to-NF calls routed via SCP slow down; Jaeger span P95 increases
+#                   for every service that communicates indirectly (AMF, SMF, AUSF, UDM...)
+#
+# Contrast with 01-cpu-stress-amf.yaml:
+#   AMF stress = single NF degraded
+#   SCP stress = entire SBI mesh degraded (all indirect calls slow)
+#   This shows a systemic vs. localised failure signature.
+#
+# Apply:  kubectl apply -f 08-cpu-stress-scp.yaml
+# Remove: kubectl delete -f 08-cpu-stress-scp.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-scp
+  namespace: open5gs
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: scp
+      app.kubernetes.io/instance: open5gs
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+  duration: "5m"

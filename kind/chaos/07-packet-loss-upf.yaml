@@ -1,0 +1,28 @@
+# Fault class: Packet Loss (Silva PF16 – Network Packet Loss)
+# Target: UPF — data-plane forwarder, handles all user-plane traffic
+# Expected propagation:
+#   Infrastructure: no direct CPU/mem signal
+#   Orchestration:  (unlikely to trigger K8s events for packet loss alone)
+#   Application:    Increased retransmissions, higher latency on UPF spans,
+#                   PDU session errors visible in SMF logs
+#
+# Apply:  kubectl apply -f 07-packet-loss-upf.yaml
+# Remove: kubectl delete -f 07-packet-loss-upf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: packet-loss-upf
+  namespace: open5gs
+spec:
+  action: loss
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: upf
+      app.kubernetes.io/instance: open5gs
+  loss:
+    loss: "30"
+    correlation: "25"
+  duration: "5m"

@@ -1,0 +1,45 @@
+# Fault class: Network Delay (Silva PF15 – Network Transmission Delay)
+# Affected interface: SBI — between AMF and SCP (HTTP/2, indirect communication Model D)
+# Expected propagation:
+#   Infrastructure: CPU queuing may increase slightly on AMF
+#   Orchestration:  (unlikely to trigger K8s events for latency alone)
+#   Application:    Loki timeout/retry errors in AMF/SCP logs;
+#                   Jaeger span P95 increase for AMF→SCP calls
+#
+# Mechanism: injects latency on egress traffic leaving AMF toward SCP.
+# direction: to  means: packets flowing FROM selector (AMF) TO target (SCP) are delayed.
+#
+# Note: previous version targeted N2 (gNB→AMF, NGAP/SCTP). That fault was invisible
+# to the SBI-layer observability stack (Beyla/Jaeger, Loki, Prometheus CPU/mem).
+# This version targets the SBI mesh where all three layers can observe the effect.
+#
+# Apply:  kubectl apply -f 04-network-delay-gnb-amf.yaml
+# Remove: kubectl delete -f 04-network-delay-gnb-amf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-gnb-amf
+  namespace: open5gs
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: amf
+      app.kubernetes.io/instance: open5gs
+  direction: to
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - open5gs
+      labelSelectors:
+        app.kubernetes.io/name: scp
+        app.kubernetes.io/instance: open5gs
+  delay:
+    latency: "500ms"
+    jitter: "20ms"
+    correlation: "25"
+  duration: "5m"

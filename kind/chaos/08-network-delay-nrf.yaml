@@ -1,0 +1,36 @@
+# Fault class: Slow Dependency (network delay on NRF SBI port)
+# Target: NRF — NF repository, all NFs heartbeat to it; SCP routes all registrations through it
+# Expected propagation:
+#   Infrastructure: no direct CPU/mem signal
+#   Orchestration:  HPA may lose metrics if NRF registration fails
+#   Application:    SCP span P95 increases (SCP→NRF calls delayed);
+#                   NRF heartbeat timeouts in AMF/SCP/SMF logs;
+#                   Loki nrf_lifecycle stream shows slow heartbeat responses
+#
+# Contrast with 06-dependency-failure-nrf.yaml (hard kill):
+#   NRF kill = sudden death, NFs detect via timeout then de-register
+#   NRF delay = gradual degradation, all NF→NRF calls slow, no outright failure
+#   This shows a different cross-layer signature: latency increase without silence/crash.
+#
+# Apply:  kubectl apply -f 08-network-delay-nrf.yaml
+# Remove: kubectl delete -f 08-network-delay-nrf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-nrf
+  namespace: open5gs
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: nrf
+      app.kubernetes.io/instance: open5gs
+  direction: to
+  delay:
+    latency: "500ms"
+    jitter: "20ms"
+    correlation: "25"
+  duration: "5m"

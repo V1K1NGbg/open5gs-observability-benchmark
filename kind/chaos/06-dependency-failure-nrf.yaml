@@ -1,0 +1,29 @@
+# Fault class: Dependency Failure (Silva RF12 + CF03 – Service Unavailable / API Internal Fault)
+# Target: NRF — the service registry all NFs use for discovery
+# Expected propagation: Application-only (no infrastructure or orchestration trigger)
+#                       All NFs simultaneously lose service discovery
+# Key signals: broken trace chains at NRF call site, missing spans system-wide,
+#              "service discovery failed" logs appearing in ALL NFs at once
+#              (simultaneous onset distinguishes this from a single-NF crash),
+#              K8s detects only if NRF pod does not come back (CrashLoopBackOff)
+#
+# Apply:  kubectl apply -f 06-dependency-failure-nrf.yaml
+# Remove: kubectl delete -f 06-dependency-failure-nrf.yaml
+#
+# Note: NRF will restart automatically via Kubernetes. The interesting window is the
+# gap between kill and successful restart + re-registration of all NFs.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: dependency-failure-nrf
+  namespace: open5gs
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: nrf
+      app.kubernetes.io/instance: open5gs
+  duration: "1m"

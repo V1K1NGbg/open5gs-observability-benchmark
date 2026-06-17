@@ -1,0 +1,26 @@
+# Fault class: Pod Crash (Silva PF03 – Process Crash Fault)
+# Target: AMF — killing it drops all active UE connections
+# Expected propagation: Orchestration (pod restart) -> Application (errors during restart gap)
+# Key signals: kube_pod_container_status_restarts_total, K8s pod restart / CrashLoopBackOff
+#              events, broken trace spans during the gap, NF connection errors in logs
+#
+# Apply:  kubectl apply -f 03-pod-crash-amf.yaml
+# Remove: kubectl delete -f 03-pod-crash-amf.yaml
+#
+# Note: pod-kill sends SIGKILL and Kubernetes immediately reschedules the pod.
+# The restart gap is typically 5–15 s on this cluster. Run 3+ times to measure variance.
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-crash-amf
+  namespace: open5gs
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: amf
+      app.kubernetes.io/instance: open5gs
+  duration: "1m"    # Chaos Mesh keeps the experiment active; pod is killed once at t=0

@@ -1,0 +1,180 @@
+# Open5GS 5G SA Helm values
+# Baseline memory usage (idle, 22 Apr 2026): AMF 27Mi, UPF 27Mi, SMF 34Mi, others 5-10Mi
+#
+# Resource limits are set intentionally low for fault injection experiments:
+# - UPF limit 128Mi → 256MiB StressChaos stressor will exceed it and trigger OOM kill
+# - AMF CPU limit 500m → 2-worker 80% StressChaos will saturate it and show throttling
+
+dbURI: "mongodb://open5gs-mongodb/open5gs"
+
+# 4G NFs — disabled (5G SA only)
+hss:
+  enabled: false
+mme:
+  enabled: false
+pcrf:
+  enabled: false
+sgwc:
+  enabled: false
+sgwu:
+  enabled: false
+
+populate:
+  enabled: true
+  initCommands:
+    - open5gs-dbctl add_ue_with_slice 999700000000001 465B5CE8B199B49FAA5F0A2EE238A6BC E8ED289DEBA952E4283B54E88E6183CA internet 1 111111
+    - open5gs-dbctl add_ue_with_slice 999700000000002 465B5CE8B199B49FAA5F0A2EE238A6BC E8ED289DEBA952E4283B54E88E6183CA internet 1 111111
+
+mongodb:
+  enabled: true
+  auth:
+    enabled: false
+
+amf:
+  config:
+    guamiList:
+      - amf_id:
+          region: 2
+          set: 1
+        plmn_id:
+          mcc: "999"
+          mnc: "70"
+    plmnList:
+      - plmn_id:
+          mcc: "999"
+          mnc: "70"
+        s_nssai:
+          - sd: "0x111111"
+            sst: 1
+    taiList:
+      - plmn_id:
+          mcc: "999"
+          mnc: "70"
+        tac:
+          - 1
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "10m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
+
+smf:
+  config:
+    pcrf:
+      enabled: false
+  resources:
+    requests:
+      memory: "40Mi"
+      cpu: "10m"
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+
+upf:
+  resources:
+    requests:
+      memory: "32Mi"
+      cpu: "10m"
+    limits:
+      memory: "128Mi"   # deliberately low — 256MiB stressor will OOM-kill this pod
+      cpu: "500m"
+
+nrf:
+  resources:
+    requests:
+      memory: "12Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+nssf:
+  config:
+    nsiList:
+      - sd: "0x111111"
+        sst: 1
+        uri: ""
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+ausf:
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+bsf:
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+pcf:
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+scp:
+  resources:
+    requests:
+      memory: "12Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+sepp:
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+udm:
+  resources:
+    requests:
+      memory: "10Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+udr:
+  resources:
+    requests:
+      memory: "12Mi"
+      cpu: "10m"
+    limits:
+      memory: "64Mi"
+      cpu: "200m"
+
+webui:
+  enabled: false
+  ingress:
+    enabled: false
+  resources:
+    requests:
+      memory: "100Mi"
+      cpu: "10m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"

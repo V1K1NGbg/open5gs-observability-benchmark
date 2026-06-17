@@ -1,0 +1,32 @@
+# Fault class: Memory Pressure / OOM Kill (Silva PF26 – Memory Allocation Fault)
+# Target: UPF — data-plane forwarder
+# Expected propagation:
+#   Infrastructure: container_memory_working_set_bytes spike → OOM kill → RSS drops to 0 → restart
+#   Orchestration:  K8s OOMKilling event, pod restart counter increments
+#   Application:    Loki gaps during restart; SMF PFCP errors (stale session state)
+#
+# NOTE: size=2048MiB exceeds UPF RSS (~34MB) by 60×, triggering OOM kill on the node.
+# Node has 32GB RAM with ~5% used so this only affects the UPF pod, not the node.
+# The previous size=256MiB used stress-ng in chaos-daemon's cgroup (invisible to
+# container_memory_working_set_bytes). This version is large enough to force OOM.
+#
+# Apply:  kubectl apply -f 02-memory-pressure-upf.yaml
+# Remove: kubectl delete -f 02-memory-pressure-upf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-pressure-upf
+  namespace: open5gs
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: upf
+      app.kubernetes.io/instance: open5gs
+  stressors:
+    memory:
+      workers: 4
+      size: "2048MiB"
+  duration: "5m"

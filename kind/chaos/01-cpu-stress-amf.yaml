@@ -1,0 +1,25 @@
+# Fault class: CPU Stress (Silva PF31 – CPU Hog Fault)
+# Target: AMF — handles all UE registrations and N2 signalling
+# Expected propagation: Infrastructure -> Orchestration (throttling) -> Application (latency)
+# Key signals: container_cpu_cfs_throttled_seconds_total, span duration increase
+#
+# Apply:  kubectl apply -f 01-cpu-stress-amf.yaml
+# Remove: kubectl delete -f 01-cpu-stress-amf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-amf
+  namespace: open5gs
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: amf
+      app.kubernetes.io/instance: open5gs
+  stressors:
+    cpu:
+      workers: 2
+      load: 80         # percent of each worker thread's CPU time
+  duration: "5m"

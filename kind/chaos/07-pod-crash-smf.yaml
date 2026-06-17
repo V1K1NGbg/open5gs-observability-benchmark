@@ -1,0 +1,30 @@
+# Fault class: Pod Crash (Silva PF01 – Process Crash)
+# Target: SMF — session management, sits between AMF and UPF
+# Expected propagation:
+#   Infrastructure: SMF memory drops to ~0 on kill, rebounds on restart
+#   Orchestration:  K8s Killing event, pod restart counter, HPA loses SMF metrics
+#   Application:    AMF errors (can't create PDU sessions), UPF PFCP state stale,
+#                   Jaeger: AMF→SCP→SMF spans disappear during crash window
+#
+# Contrast with 03-pod-crash-amf.yaml:
+#   AMF crash = control plane entry point dies (UEs can't register)
+#   SMF crash = session management dies (UEs registered but can't get data plane)
+#   This shows upstream propagation: AMF degrades because its dependency (SMF) is gone.
+#
+# Apply:  kubectl apply -f 07-pod-crash-smf.yaml
+# Remove: kubectl delete -f 07-pod-crash-smf.yaml
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: pod-crash-smf
+  namespace: open5gs
+spec:
+  action: pod-kill
+  mode: all
+  selector:
+    namespaces:
+      - open5gs
+    labelSelectors:
+      app.kubernetes.io/name: smf
+      app.kubernetes.io/instance: open5gs
+  duration: "5m"
